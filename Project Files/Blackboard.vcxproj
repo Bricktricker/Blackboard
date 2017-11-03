@@ -136,8 +136,14 @@
     <ClInclude Include="..\Blackboard.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Blackboard.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="main_orig.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="mod.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
