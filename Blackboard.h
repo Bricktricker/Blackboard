@@ -75,7 +75,8 @@ namespace Utilities {
         template<typename T> inline size_t templateToID() const;
 
         //! Ensure that a ValueMap objects exists for a specific type
-        template<typename T> inline size_t supportType();
+        template<typename T> inline size_t supportTypeRead();
+		template<typename T> inline size_t supportTypeWrite();
 
     public:
         //! Creation/destruction
@@ -195,18 +196,18 @@ namespace Utilities {
     }
 
     /*
-        Blackboard : supportType<T> - Using the type of the template ensure that there is a Value map to support 
+        Blackboard : supportTypeWrite<T> - Using the type of the template ensure that there is a Value map to support 
                                    holding data of its type
         Author: Mitchell Croft
         Created: 08/11/2016
-        Modified: 08/11/2016
+        Modified: 04/11/2017
 
         template T - A generic, non void type
 
         return size_t - Returns the unique hash code for the template type T
     */
     template<typename T>
-    inline size_t Utilities::Blackboard::supportType() {
+    inline size_t Utilities::Blackboard::supportTypeWrite() {
         //Get the hash code for the type
         size_t key = templateToID<T>();
 
@@ -217,6 +218,30 @@ namespace Utilities {
         //Return the key
         return key;
     }
+
+	/*
+	Blackboard : supportTypeRead<T> - Using the type of the template ensure that there is a Value map to support
+					holding data of its type. Throws a invalid_argument execption if the Value map could not be found
+	Author: Bricktricker
+	Created: 04/11/2017
+
+	template T - A generic, non void type
+
+	return size_t - Returns the unique hash code for the template type T
+	*/
+	template<typename T>
+	inline size_t Utilities::Blackboard::supportTypeRead() {
+		//Get the hash code for the type
+		size_t key = templateToID<T>();
+
+		//If there isn't a entry for the hash code create a new map
+		if (mDataStorage.find(key) == mDataStorage.end()) {
+			throw std::invalid_argument("Template not found in Blackboard");
+		}
+
+		//Return the key
+		return key;
+	}
     
     /*
         Blackboard : write<T> - Write a data value to the Blackboard 
@@ -239,7 +264,7 @@ namespace Utilities {
         std::lock_guard<std::recursive_mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
-        size_t key = supportType<T>();
+        size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
         Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
@@ -271,16 +296,16 @@ namespace Utilities {
     template<typename T>
     inline const T& Utilities::Blackboard::read(const std::string& pKey) {
         //Ensure that the singleton has been created
-        assert(mInstance);
+        //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mInstance->mDataLock);
+        std::lock_guard<std::recursive_mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
-        size_t key = mInstance->supportType<T>();
+        size_t key = supportTypeRead<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mInstance->mDataStorage[key]);
+        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Return the value at the key location
         return map->mValues[pKey];
@@ -297,16 +322,16 @@ namespace Utilities {
     template<typename T>
     inline void Utilities::Blackboard::wipeTypeKey(const std::string& pKey) {
         //Ensure that the singleton has been created
-        assert(mInstance);
+        //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mInstance->mDataLock);
+        std::lock_guard<std::recursive_mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
-        size_t key = mInstance->supportType<T>();
+        size_t key = supportTypeRead<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mInstance->mDataStorage[key]);
+        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Wipe the key from the value map
         map->wipeKey(pKey);
@@ -326,16 +351,16 @@ namespace Utilities {
     template<typename T>
     inline void Utilities::Blackboard::subscribe(const std::string& pKey, EventKeyCallback<T> pCb) {
         //Ensure that the singleton has been created
-        assert(mInstance);
+        //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mInstance->mDataLock);
+        std::lock_guard<std::recursive_mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
-        size_t key = mInstance->supportType<T>();
+        size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mInstance->mDataStorage[key]);
+        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Set the event callback
         map->mKeyEvents[pKey] = pCb;
@@ -356,16 +381,16 @@ namespace Utilities {
     template<typename T>
     inline void Utilities::Blackboard::subscribe(const std::string& pKey, EventValueCallback<T> pCb) {
         //Ensure that the singleton has been created
-        assert(mInstance);
+        //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mInstance->mDataLock);
+        std::lock_guard<std::recursive_mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
-        size_t key = mInstance->supportType<T>();
+        size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mInstance->mDataStorage[key]);
+        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Set the event callback
         map->mValueEvents[pKey] = pCb;
@@ -386,16 +411,16 @@ namespace Utilities {
     template<typename T>
     inline void Utilities::Blackboard::subscribe(const std::string& pKey, EventKeyValueCallback<T> pCb) {
         //Ensure that the singleton has been created
-        assert(mInstance);
+        //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mInstance->mDataLock);
+        std::lock_guard<std::recursive_mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
-        size_t key = mInstance->supportType<T>();
+        size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mInstance->mDataStorage[key]);
+        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Set the event callback
         map->mPairEvents[pKey] = pCb;
@@ -413,16 +438,16 @@ namespace Utilities {
     template<typename T>
     inline void Utilities::Blackboard::unsubscribe(const std::string& pKey) {
         //Ensure that the singleton has been created
-        assert(mInstance);
+        //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mInstance->mDataLock);
+        std::lock_guard<std::recursive_mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
-        size_t key = mInstance->supportType<T>();
+        size_t key = supportTypeRead<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mInstance->mDataStorage[key]);
+        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Pass the unsubscribe key to the Value Map
         map->unsubscribe(pKey);
