@@ -3,7 +3,8 @@ using Utilities::Blackboard;
 #include <iostream>
 
 void call(const int& value) {
-	__debugbreak();
+	//__debugbreak();
+	int i = 0;
 }
 
 int main() {
@@ -13,5 +14,7 @@ int main() {
 
 	auto value = b.read<int>("key");
 
+	//b.unsubscribeAll("key");
+	b.wipeTypeKey<int>("key");
 	return 0;
 }

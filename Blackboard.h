@@ -49,14 +49,11 @@ namespace Utilities {
 			//Utilities::Blackboard::destroy()
 
 			//Lock the data values
-			mDataLock.lock();
+			std::lock_guard<std::mutex> guard(mDataLock);
 
 			//Delete all Value Map values
 			for (auto pair : mDataStorage)
 				delete pair.second;
-
-			//Unlock the data
-			mDataLock.unlock();
 
 			//Delete the singleton 
 			//delete mInstance;
@@ -69,7 +66,8 @@ namespace Utilities {
         std::unordered_map<size_t, Templates::BaseMap*> mDataStorage;
 
         //! Store a mutex for locking data when in use
-        std::recursive_mutex mDataLock;
+        //std::recursive_mutex mDataLock;
+		std::mutex mDataLock;
 
         //! Convert a template type into a unique ID value
         template<typename T> inline size_t templateToID() const;
@@ -261,7 +259,7 @@ namespace Utilities {
         //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mDataLock);
+        std::lock_guard<std::mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
         size_t key = supportTypeWrite<T>();
@@ -299,7 +297,7 @@ namespace Utilities {
         //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mDataLock);
+        std::lock_guard<std::mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
         size_t key = supportTypeRead<T>();
@@ -325,7 +323,7 @@ namespace Utilities {
         //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mDataLock);
+        std::lock_guard<std::mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
         size_t key = supportTypeRead<T>();
@@ -354,7 +352,7 @@ namespace Utilities {
         //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mDataLock);
+        std::lock_guard<std::mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
         size_t key = supportTypeWrite<T>();
@@ -384,7 +382,7 @@ namespace Utilities {
         //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mDataLock);
+        std::lock_guard<std::mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
         size_t key = supportTypeWrite<T>();
@@ -414,7 +412,7 @@ namespace Utilities {
         //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mDataLock);
+        std::lock_guard<std::mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
         size_t key = supportTypeWrite<T>();
@@ -441,7 +439,7 @@ namespace Utilities {
         //assert(mInstance);
 
         //Lock the data
-        std::lock_guard<std::recursive_mutex> guard(mDataLock);
+        std::lock_guard<std::mutex> guard(mDataLock);
 
         //Ensure the key for this type is supported
         size_t key = supportTypeRead<T>();
@@ -596,7 +594,7 @@ void Utilities::Blackboard::wipeKey(const std::string& pKey) {
     //assert(mInstance);
 
     //Lock the data
-    std::lock_guard<std::recursive_mutex> guard(mDataLock);
+    std::lock_guard<std::mutex> guard(mDataLock);
 
     //Loop through the different type collections
     for (auto pair : mDataStorage)
@@ -617,7 +615,7 @@ void Utilities::Blackboard::wipeBoard(bool pWipeCallbacks) {
     //assert(mInstance);
 
     //Lock the data
-    std::lock_guard<std::recursive_mutex> guard(mDataLock);
+    std::lock_guard<std::mutex> guard(mDataLock);
 
     //Loop through all stored Value maps
     for (auto pair : mDataStorage) {
@@ -643,7 +641,7 @@ void Utilities::Blackboard::unsubscribeAll(const std::string& pKey) {
     //assert(mInstance);
 
     //Lock the data
-    std::lock_guard<std::recursive_mutex> guard(mDataLock);
+    std::lock_guard<std::mutex> guard(mDataLock);
 
     //Loop through all stored Value maps
     for (auto pair : mDataStorage)
