@@ -3,7 +3,7 @@ This thread save data structure allows you to store data of all types in one dat
 It requires c++ 11. This repository is a fork of [MitchCroft/Blackboard](https://github.com/MitchCroft/Blackboard),
 but I removed the singleton feature and optimized it a bit, so that you can create multiple instances of the blackboard.
 
-### Basic usage:
+### Usage:
 ```cpp
 #include "Blackboard.h"
 
