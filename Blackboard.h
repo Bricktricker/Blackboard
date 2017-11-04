@@ -18,8 +18,9 @@ namespace Utilities {
     /*
      *      Name: Blackboard 
      *      Author: Mitchell Croft
+	 *		Changed: Bricktricker
      *      Created: 08/11/2016
-     *      Modified: 09/11/2016
+     *      Modified: 03/11/2017
      *      
      *      Purpose:
      *      Provide a singleton location for a user to store
@@ -501,7 +502,7 @@ namespace Utilities {
 /////                                                                                                                      ////
 /////  Include a define for _BLACKBOARD_ in a single .cpp file inside of the project to use the Blackboard functionality   ////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifdef _BLACKBOARD_
+
 //! Define the Blackboards static singleton instance
 //Utilities::Blackboard* Utilities::Blackboard::mInstance = nullptr;
 
@@ -623,4 +624,3 @@ void Utilities::Blackboard::unsubscribeAll(const std::string& pKey) {
     for (auto pair : mDataStorage)
         pair.second->unsubscribe(pKey);
 }
-#endif  //_BLACKBOARD_

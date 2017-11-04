@@ -1,6 +1,7 @@
 #define _BLACKBOARD_
 #include "Blackboard.h"
 using Utilities::Blackboard;
+#include <iostream>
 
 int main() {
 	Blackboard b;
