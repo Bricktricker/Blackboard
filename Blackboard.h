@@ -75,14 +75,16 @@ namespace Util {
         template<typename T> inline size_t templateToID() const;
 
         //! Ensure that a ValueMap objects exists for a specific type
-        template<typename T> inline size_t supportTypeRead(); //throws an exeption, if their is no map of type T
+        template<typename T> inline size_t supportTypeRead() const; //throws an exeption, if their is no map of type T
 		template<typename T> inline size_t supportTypeWrite();
 
     public:
 
         //! Data reading/writing
         template<typename T> void write(const std::string& pKey, const T& pValue, bool pRaiseCallbacks = true);
-        template<typename T> const T& read(const std::string& pKey);
+		template<typename T> void write(const std::string& pKey, const T&& pValue, bool pRaiseCallbacks = true);
+        template<typename T> const T& read(const std::string& pKey) const;
+		template<typename T> T& read(const std::string& pKey);
         template<typename T> void wipeTypeKey(const std::string& pKey);
         /*----------------*/ void wipeKey(const std::string& pKey);
         /*----------------*/ void wipeBoard(bool pWipeCallbacks = false);
@@ -226,7 +228,7 @@ namespace Util {
 	return size_t - Returns the unique hash code for the template type T
 	*/
 	template<typename T>
-	inline size_t Util::Blackboard::supportTypeRead() {
+	inline size_t Util::Blackboard::supportTypeRead() const {
 		//Get the hash code for the type
 		size_t key = templateToID<T>();
 
@@ -275,6 +277,41 @@ namespace Util {
         }
     }
 
+	/*
+	Blackboard : write<T> - Write a data value to the Blackboard
+	Author: Bricktricker
+	Created: 04/11/2017
+
+	template T - A generic, non void type
+
+	param[in] pKey - The key value to save the data value at
+	param[in] pValue - The data rvalue to be saved to the key location
+	param[in] pRaiseCallbacks - A flag to indicate if callback events should be raised (Default true)
+	*/
+	template<typename T>
+	inline void Util::Blackboard::write(const std::string& pKey, const T&& pValue, bool pRaiseCallbacks) {
+
+		//Lock the data
+		std::lock_guard<std::mutex> guard(mDataLock);
+
+		//Ensure the key for this type is supported
+		size_t key = supportTypeWrite<T>();
+
+		//Cast the Value Map to the type of T
+		Util::Templates::ValueMap<T>* map = static_cast<Util::Templates::ValueMap<T>*>(mDataStorage[key].get());
+
+		//Copy the data value across
+		map->mValues[pKey] = std::move(pValue);
+
+		//Check event flag
+		if (pRaiseCallbacks) {
+			//Check for events to raise
+			if (map->mKeyEvents.find(pKey) != map->mKeyEvents.end() && map->mKeyEvents[pKey]) map->mKeyEvents[pKey](pKey);
+			if (map->mValueEvents.find(pKey) != map->mValueEvents.end() && map->mValueEvents[pKey]) map->mValueEvents[pKey](map->mValues[pKey]);
+			if (map->mPairEvents.find(pKey) != map->mPairEvents.end() && map->mPairEvents[pKey]) map->mPairEvents[pKey](pKey, map->mValues[pKey]);
+		}
+	}
+
     /*
         Blackboard : read<T> - Read the value of a key value from the Blackboard
         Author: Mitchell Croft
@@ -288,7 +325,7 @@ namespace Util {
         return const T& - Returns a constant reference to the data type of type T
     */
     template<typename T>
-    inline const T& Util::Blackboard::read(const std::string& pKey) {
+    inline const T& Util::Blackboard::read(const std::string& pKey) const {
 
         //Lock the data
         std::lock_guard<std::mutex> guard(mDataLock);
@@ -302,6 +339,33 @@ namespace Util {
         //Return the value at the key location
         return map->mValues[pKey];
     }
+
+	/*
+	Blackboard : read<T> - Read the value of a key value from the Blackboard
+	Author: Bricktricker
+	Created: 04/11/2017
+
+	template T - A generic, non void type
+
+	param[in] pKey - The key value to read the data value of
+
+	return T& - Returns a reference to the data type of type T
+	*/
+	template<typename T>
+	inline T& Util::Blackboard::read(const std::string& pKey) {
+
+		//Lock the data
+		std::lock_guard<std::mutex> guard(mDataLock);
+
+		//Ensure the key for this type is supported
+		size_t key = supportTypeRead<T>();
+
+		//Cast the Value Map to the type of T
+		Util::Templates::ValueMap<T>* map = static_cast<Util::Templates::ValueMap<T>*>(mDataStorage[key].get());
+
+		//Return the value at the key location
+		return map->mValues[pKey];
+	}
 
     /*
         Blackboard : wipeTypeKey - Wipe the value stored at a specific key for the specified type

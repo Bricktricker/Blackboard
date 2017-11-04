@@ -14,14 +14,15 @@ int main() {
 
 	b.write("key", 5, true);
 	Test t;
+	t.m_val = 1;
 	b.write("class", t);
+	b.write("temp", Test());
 
 	auto value = b.read<int>("key");
-	const Test& t2 = b.read<Test>("class");
-	auto v2 = b.read<int>("key");
+	Test& t2 = b.read<Test>("class");
 	b.write<std::string>("str", "val");
 
-	auto s = b.read<std::string>("str");
+	std::string str = b.read<std::string>("str");
 
 	return 0;
 }
