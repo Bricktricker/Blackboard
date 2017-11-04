@@ -11,6 +11,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <functional>
+#include <string>
 
 namespace Util {
     //! Forward declare the base type of the data storage object
@@ -49,13 +50,14 @@ namespace Util {
 		public:
         /*----------Singleton Values----------*/
         Blackboard() = default;
+
 		~Blackboard() {
 			//Lock the data values
 			std::lock_guard<std::mutex> guard(mDataLock);
 
 			//Delete all Value Map values
-			for (auto pair : mDataStorage) {
-				delete pair.second;
+			for (auto& pair : mDataStorage) {
+				//delete pair.second;
 			}
 
 		};
@@ -64,7 +66,7 @@ namespace Util {
         /*----------Variables----------*/
 
         //! Store a map of all of the different value types
-        std::unordered_map<size_t, Templates::BaseMap*> mDataStorage;
+		std::unordered_map<size_t, std::unique_ptr<Templates::BaseMap>> mDataStorage;
 
         //! Store a mutex for locking data when in use
 		std::mutex mDataLock;
@@ -112,15 +114,16 @@ namespace Util {
             //! Set the Value map to be a friend of the blackboard to allow for construction/destruction of the object
             friend class Blackboard;
 
-            //! Privatise the constructor/destructor to prevent external use
-            BaseMap() = default; 
-            virtual ~BaseMap() = 0; 
-
             //! Provide virtual methods for wiping keyed information
             inline virtual void wipeKey(const std::string& pKey) = 0;
             inline virtual void wipeAll() = 0;
             inline virtual void unsubscribe(const std::string& pKey) = 0;
             inline virtual void clearAllEvents() = 0;
+
+		public:
+			//! need to be public to work with unique_ptr
+			BaseMap() = default;
+			virtual ~BaseMap() = 0;
         };
 
         //! Define the default destructor for the BaseMap's pure virtual destructor
@@ -204,8 +207,9 @@ namespace Util {
         size_t key = templateToID<T>();
 
         //If there isn't a entry for the hash code create a new map
-        if (mDataStorage.find(key) == mDataStorage.end())
-            mDataStorage[key] = new Util::Templates::ValueMap<T>();
+		if (mDataStorage.find(key) == mDataStorage.end()) {
+			mDataStorage[key] = std::unique_ptr<Util::Templates::BaseMap>(new Util::Templates::ValueMap<T>());
+		}
 
         //Return the key
         return key;
@@ -257,7 +261,7 @@ namespace Util {
         size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
+		Util::Templates::ValueMap<T>* map = static_cast<Util::Templates::ValueMap<T>*>(mDataStorage[key].get());
 
         //Copy the data value across
         map->mValues[pKey] = pValue;
@@ -293,7 +297,7 @@ namespace Util {
         size_t key = supportTypeRead<T>();
 
         //Cast the Value Map to the type of T
-        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
+		Util::Templates::ValueMap<T>* map = static_cast<Util::Templates::ValueMap<T>*>(mDataStorage[key].get());
 
         //Return the value at the key location
         return map->mValues[pKey];
@@ -317,7 +321,7 @@ namespace Util {
         size_t key = supportTypeRead<T>();
 
         //Cast the Value Map to the type of T
-        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
+		Util::Templates::ValueMap<T>* map = static_cast<Util::Templates::ValueMap<T>*>(mDataStorage[key].get());
 
         //Wipe the key from the value map
         map->wipeKey(pKey);
@@ -344,7 +348,7 @@ namespace Util {
         size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
+        Util::Templates::ValueMap<T>* map = static_cast<Util::Templates::ValueMap<T>*>(mDataStorage[key].get());
 
         //Set the event callback
         map->mKeyEvents[pKey] = pCb;
@@ -372,7 +376,7 @@ namespace Util {
         size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
+		Util::Templates::ValueMap<T>* map = static_cast<Util::Templates::ValueMap<T>*>(mDataStorage[key].get());
 
         //Set the event callback
         map->mValueEvents[pKey] = pCb;
@@ -400,7 +404,7 @@ namespace Util {
         size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
+		Util::Templates::ValueMap<T>* map = static_cast<Util::Templates::ValueMap<T>*>(mDataStorage[key].get());
 
         //Set the event callback
         map->mPairEvents[pKey] = pCb;
@@ -425,7 +429,7 @@ namespace Util {
         size_t key = supportTypeRead<T>();
 
         //Cast the Value Map to the type of T
-        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
+        Util::Templates::ValueMap<T>* map = static_cast<Util::Templates::ValueMap<T>*>(mDataStorage[key].get());
 
         //Pass the unsubscribe key to the Value Map
         map->unsubscribe(pKey);
@@ -457,7 +461,9 @@ namespace Util {
         template T - A generic, non void type
     */
     template<typename T>
-    inline void Util::Templates::ValueMap<T>::wipeAll() { mValues.clear(); }
+    inline void Util::Templates::ValueMap<T>::wipeAll() {
+		mValues.clear();
+	}
 
     /*
         ValueMap<T> : unsubscribe - Remove all callback events associated with a key value
@@ -515,7 +521,7 @@ void Util::Blackboard::wipeKey(const std::string& pKey) {
     std::lock_guard<std::mutex> guard(mDataLock);
 
     //Loop through the different type collections
-    for (auto pair : mDataStorage)
+    for (auto& pair : mDataStorage)
         pair.second->wipeKey(pKey);
 }
 
@@ -534,7 +540,7 @@ void Util::Blackboard::wipeBoard(bool pWipeCallbacks) {
     std::lock_guard<std::mutex> guard(mDataLock);
 
     //Loop through all stored Value maps
-    for (auto pair : mDataStorage) {
+    for (auto& pair : mDataStorage) {
         //Clear the data values
         pair.second->wipeAll();
 
@@ -558,7 +564,7 @@ void Util::Blackboard::unsubscribeAll(const std::string& pKey) {
     std::lock_guard<std::mutex> guard(mDataLock);
 
     //Loop through all stored Value maps
-    for (auto pair : mDataStorage)
+    for (auto& pair : mDataStorage)
         pair.second->unsubscribe(pKey);
 }
 
