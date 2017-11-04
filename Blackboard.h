@@ -1,19 +1,27 @@
-#pragma once
+#ifndef BLACKBOARD_H
+#define BLACKBOARD_H
+
+#ifdef _MSC_VER
+	#pragma warning( push )  
+	#pragma warning( disable : 4150 )
+#endif
 
 #include <typeinfo>
 #include <unordered_map>
 #include <mutex>
-#include <assert.h>
 #include <stdexcept>
+#include <functional>
 
-namespace Utilities {
+namespace Util {
     //! Forward declare the base type of the data storage object
-    namespace Templates { class BaseMap; }
+    namespace Templates {
+		class BaseMap;
+	}
 
     //! Define alias' for the different types of event callbacks that can be defined
-    template<typename T> using EventKeyCallback = void(*)(const std::string&);
-    template<typename T> using EventValueCallback = void(*)(const T&);
-    template<typename T> using EventKeyValueCallback = void(*)(const std::string&, const T&);
+	template<typename T> using EventKeyCallback = std::function<void(const std::string&)>;
+	template<typename T> using EventValueCallback = std::function<void(const T&)>;
+	template<typename T> using EventKeyValueCallback = std::function<void(const std::string&, const T&)>;
 
     /*
      *      Name: Blackboard 
@@ -23,14 +31,11 @@ namespace Utilities {
      *      Modified: 03/11/2017
      *      
      *      Purpose:
-     *      Provide a singleton location for a user to store
-     *      generic data in a easily accessible location. 
+     *      Provide a structure for a user to store
+     *      generic data. 
      *      
-     *      Callback functionality will be implemented to allow 
+     *      Callback functionality implemented to allow 
      *      listening for when specific keyed data is changed. 
-     *      
-     *      The create and destroy functions must be called 
-     *      prior to use.
      *      
      *      Warning:
      *      Data types stored on the blackboard must have valid
@@ -43,20 +48,16 @@ namespace Utilities {
     class Blackboard {
 		public:
         /*----------Singleton Values----------*/
-        //static Blackboard* mInstance;
         Blackboard() = default;
 		~Blackboard() {
-			//Utilities::Blackboard::destroy()
-
 			//Lock the data values
 			std::lock_guard<std::mutex> guard(mDataLock);
 
 			//Delete all Value Map values
-			for (auto pair : mDataStorage)
+			for (auto pair : mDataStorage) {
 				delete pair.second;
+			}
 
-			//Delete the singleton 
-			//delete mInstance;
 		};
 
 		private:
@@ -66,20 +67,16 @@ namespace Utilities {
         std::unordered_map<size_t, Templates::BaseMap*> mDataStorage;
 
         //! Store a mutex for locking data when in use
-        //std::recursive_mutex mDataLock;
 		std::mutex mDataLock;
 
         //! Convert a template type into a unique ID value
         template<typename T> inline size_t templateToID() const;
 
         //! Ensure that a ValueMap objects exists for a specific type
-        template<typename T> inline size_t supportTypeRead();
+        template<typename T> inline size_t supportTypeRead(); //throws an exeption, if their is no map of type T
 		template<typename T> inline size_t supportTypeWrite();
 
     public:
-        //! Creation/destruction
-        /*----------------*/ //static bool create(); !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        /*----------------*/ //static void destroy(); !!!!!!!!!!!!!!!!!!!
 
         //! Data reading/writing
         template<typename T> void write(const std::string& pKey, const T& pValue, bool pRaiseCallbacks = true);
@@ -95,9 +92,6 @@ namespace Utilities {
         template<typename T> void unsubscribe(const std::string& pKey);
         /*----------------*/ void unsubscribeAll(const std::string& pKey);
 
-		//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //! Getters
-        /*----------------*/ //static inline bool isReady() { return (mInstance != nullptr); }
     };
 
     namespace Templates {
@@ -130,7 +124,7 @@ namespace Utilities {
         };
 
         //! Define the default destructor for the BaseMap's pure virtual destructor
-        inline BaseMap::~BaseMap() {}
+		inline BaseMap::~BaseMap() = default;
 
         /*
          *      Name: ValueMap (General)
@@ -185,7 +179,7 @@ namespace Utilities {
         return size_t - Returns the ID as a size_t value
     */
     template<typename T>
-    inline size_t Utilities::Blackboard::templateToID() const {
+    inline size_t Util::Blackboard::templateToID() const {
         //Get the type info
         const std::type_info& type = typeid(T);
 
@@ -205,13 +199,13 @@ namespace Utilities {
         return size_t - Returns the unique hash code for the template type T
     */
     template<typename T>
-    inline size_t Utilities::Blackboard::supportTypeWrite() {
+    inline size_t Util::Blackboard::supportTypeWrite() {
         //Get the hash code for the type
         size_t key = templateToID<T>();
 
         //If there isn't a entry for the hash code create a new map
         if (mDataStorage.find(key) == mDataStorage.end())
-            mDataStorage[key] = new Utilities::Templates::ValueMap<T>();
+            mDataStorage[key] = new Util::Templates::ValueMap<T>();
 
         //Return the key
         return key;
@@ -228,7 +222,7 @@ namespace Utilities {
 	return size_t - Returns the unique hash code for the template type T
 	*/
 	template<typename T>
-	inline size_t Utilities::Blackboard::supportTypeRead() {
+	inline size_t Util::Blackboard::supportTypeRead() {
 		//Get the hash code for the type
 		size_t key = templateToID<T>();
 
@@ -254,9 +248,7 @@ namespace Utilities {
         param[in] pRaiseCallbacks - A flag to indicate if callback events should be raised (Default true)
     */
     template<typename T>
-    inline void Utilities::Blackboard::write(const std::string& pKey, const T& pValue, bool pRaiseCallbacks) {
-        //Ensure that the singleton has been created
-        //assert(mInstance);
+    inline void Util::Blackboard::write(const std::string& pKey, const T& pValue, bool pRaiseCallbacks) {
 
         //Lock the data
         std::lock_guard<std::mutex> guard(mDataLock);
@@ -265,7 +257,7 @@ namespace Utilities {
         size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
+        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Copy the data value across
         map->mValues[pKey] = pValue;
@@ -292,9 +284,7 @@ namespace Utilities {
         return const T& - Returns a constant reference to the data type of type T
     */
     template<typename T>
-    inline const T& Utilities::Blackboard::read(const std::string& pKey) {
-        //Ensure that the singleton has been created
-        //assert(mInstance);
+    inline const T& Util::Blackboard::read(const std::string& pKey) {
 
         //Lock the data
         std::lock_guard<std::mutex> guard(mDataLock);
@@ -303,7 +293,7 @@ namespace Utilities {
         size_t key = supportTypeRead<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
+        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Return the value at the key location
         return map->mValues[pKey];
@@ -318,9 +308,7 @@ namespace Utilities {
         param[in] pKey - A string object containing the key of the value(s) to remove
     */
     template<typename T>
-    inline void Utilities::Blackboard::wipeTypeKey(const std::string& pKey) {
-        //Ensure that the singleton has been created
-        //assert(mInstance);
+    inline void Util::Blackboard::wipeTypeKey(const std::string& pKey) {
 
         //Lock the data
         std::lock_guard<std::mutex> guard(mDataLock);
@@ -329,7 +317,7 @@ namespace Utilities {
         size_t key = supportTypeRead<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
+        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Wipe the key from the value map
         map->wipeKey(pKey);
@@ -347,9 +335,7 @@ namespace Utilities {
         param[in] pCb - A function pointer that takes in a constant string reference as its only parameter
     */
     template<typename T>
-    inline void Utilities::Blackboard::subscribe(const std::string& pKey, EventKeyCallback<T> pCb) {
-        //Ensure that the singleton has been created
-        //assert(mInstance);
+    inline void Util::Blackboard::subscribe(const std::string& pKey, EventKeyCallback<T> pCb) {
 
         //Lock the data
         std::lock_guard<std::mutex> guard(mDataLock);
@@ -358,7 +344,7 @@ namespace Utilities {
         size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
+        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Set the event callback
         map->mKeyEvents[pKey] = pCb;
@@ -377,9 +363,7 @@ namespace Utilities {
                         as its only parameters
     */
     template<typename T>
-    inline void Utilities::Blackboard::subscribe(const std::string& pKey, EventValueCallback<T> pCb) {
-        //Ensure that the singleton has been created
-        //assert(mInstance);
+    inline void Util::Blackboard::subscribe(const std::string& pKey, EventValueCallback<T> pCb) {
 
         //Lock the data
         std::lock_guard<std::mutex> guard(mDataLock);
@@ -388,7 +372,7 @@ namespace Utilities {
         size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
+        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Set the event callback
         map->mValueEvents[pKey] = pCb;
@@ -407,9 +391,7 @@ namespace Utilities {
                         the new value as its only parameters
     */
     template<typename T>
-    inline void Utilities::Blackboard::subscribe(const std::string& pKey, EventKeyValueCallback<T> pCb) {
-        //Ensure that the singleton has been created
-        //assert(mInstance);
+    inline void Util::Blackboard::subscribe(const std::string& pKey, EventKeyValueCallback<T> pCb) {
 
         //Lock the data
         std::lock_guard<std::mutex> guard(mDataLock);
@@ -418,7 +400,7 @@ namespace Utilities {
         size_t key = supportTypeWrite<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
+        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Set the event callback
         map->mPairEvents[pKey] = pCb;
@@ -434,9 +416,7 @@ namespace Utilities {
         param[in] pKey - The key to remove the callback events from
     */
     template<typename T>
-    inline void Utilities::Blackboard::unsubscribe(const std::string& pKey) {
-        //Ensure that the singleton has been created
-        //assert(mInstance);
+    inline void Util::Blackboard::unsubscribe(const std::string& pKey) {
 
         //Lock the data
         std::lock_guard<std::mutex> guard(mDataLock);
@@ -445,7 +425,7 @@ namespace Utilities {
         size_t key = supportTypeRead<T>();
 
         //Cast the Value Map to the type of T
-        Utilities::Templates::ValueMap<T>* map = (Utilities::Templates::ValueMap<T>*)(mDataStorage[key]);
+        Util::Templates::ValueMap<T>* map = (Util::Templates::ValueMap<T>*)(mDataStorage[key]);
 
         //Pass the unsubscribe key to the Value Map
         map->unsubscribe(pKey);
@@ -464,7 +444,9 @@ namespace Utilities {
         param[in] pKey - The key value to clear the entry of
     */
     template<typename T>
-    inline void Utilities::Templates::ValueMap<T>::wipeKey(const std::string& pKey) { mValues.erase(pKey); }
+    inline void Util::Templates::ValueMap<T>::wipeKey(const std::string& pKey) {
+		mValues.erase(pKey);
+	}
 
     /*
         ValueMap<T> : wipeAll - Erase all data stored in the map
@@ -475,7 +457,7 @@ namespace Utilities {
         template T - A generic, non void type
     */
     template<typename T>
-    inline void Utilities::Templates::ValueMap<T>::wipeAll() { mValues.clear(); }
+    inline void Util::Templates::ValueMap<T>::wipeAll() { mValues.clear(); }
 
     /*
         ValueMap<T> : unsubscribe - Remove all callback events associated with a key value
@@ -488,7 +470,7 @@ namespace Utilities {
         param[in] pKey - The key to wipe all callback events associated with
     */
     template<typename T>
-    inline void Utilities::Templates::ValueMap<T>::unsubscribe(const std::string& pKey) {
+    inline void Util::Templates::ValueMap<T>::unsubscribe(const std::string& pKey) {
         //Find iterators
         auto key = mKeyEvents.find(pKey);
         auto val = mValueEvents.find(pKey);
@@ -509,7 +491,7 @@ namespace Utilities {
         template T - A generic, non void type
     */
     template<typename T>
-    inline void Utilities::Templates::ValueMap<T>::clearAllEvents() {
+    inline void Util::Templates::ValueMap<T>::clearAllEvents() {
         //Clear all event maps
         mKeyEvents.clear();
         mValueEvents.clear();
@@ -519,68 +501,6 @@ namespace Utilities {
     #pragma endregion
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////                                                                                                                      ////
-/////                                                      Object Definition                                               ////
-/////                                                                                                                      ////
-/////  Include a define for _BLACKBOARD_ in a single .cpp file inside of the project to use the Blackboard functionality   ////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//! Define the Blackboards static singleton instance
-//Utilities::Blackboard* Utilities::Blackboard::mInstance = nullptr;
-
-/*
-    Blackboard : create - Initialise the Blackboard singleton for use
-    Author: Mitchell Croft
-    Created: 08/11/2016
-    Modified: 08/11/2016
-
-    return bool - Returns true if the Blackboard was initialised successfully
-*/
-
-/*
-bool Utilities::Blackboard::create() {
-    //Check if the Blackboard has already been set up
-    if (isReady()) destroy();
-
-    //Create the instance
-    mInstance = new Blackboard();
-
-    //Return success state
-    return (mInstance != nullptr);
-}
-*/
-
-/*
-    Blackboard : destroy - Deallocate all data associated with the Blackboard and destroy
-                           the singleton instance
-    Author: Mitchell Croft
-    Created: 08/11/2016
-    Modified: 08/11/2016
-*/
-/*
-void Utilities::Blackboard::destroy() {
-    //Check that there is an instance to destroy
-    if (mInstance) {
-        //Lock the data values
-        mInstance->mDataLock.lock();
-
-        //Delete all Value Map values
-        for (auto pair : mInstance->mDataStorage)
-            delete pair.second;
-
-        //Unlock the data
-        mInstance->mDataLock.unlock();
-
-        //Delete the singleton 
-        delete mInstance;
-
-        //Reset the instance pointer
-        mInstance = nullptr;
-    }
-}
-*/
-
 /*
     Blackboard : wipeKey - Clear all data associated with the passed in key value
     Author: Mitchell Croft
@@ -589,9 +509,7 @@ void Utilities::Blackboard::destroy() {
 
     param[in] pKey - A string object containing the key of the value(s) to remove
 */
-void Utilities::Blackboard::wipeKey(const std::string& pKey) {
-    //Ensure that the singleton has been created
-    //assert(mInstance);
+void Util::Blackboard::wipeKey(const std::string& pKey) {
 
     //Lock the data
     std::lock_guard<std::mutex> guard(mDataLock);
@@ -610,9 +528,7 @@ void Utilities::Blackboard::wipeKey(const std::string& pKey) {
     param[in] pWipeCallbacks - Flags if all of the set event callbacks should be cleared
                                as well as the values (Default false)
 */
-void Utilities::Blackboard::wipeBoard(bool pWipeCallbacks) {
-    //Ensure that the singleton has been created
-    //assert(mInstance);
+void Util::Blackboard::wipeBoard(bool pWipeCallbacks) {
 
     //Lock the data
     std::lock_guard<std::mutex> guard(mDataLock);
@@ -636,9 +552,7 @@ void Utilities::Blackboard::wipeBoard(bool pWipeCallbacks) {
 
     param[in] pKey - The key to remove the callback events from
 */
-void Utilities::Blackboard::unsubscribeAll(const std::string& pKey) {
-    //Ensure that the singleton has been created
-    //assert(mInstance);
+void Util::Blackboard::unsubscribeAll(const std::string& pKey) {
 
     //Lock the data
     std::lock_guard<std::mutex> guard(mDataLock);
@@ -647,3 +561,10 @@ void Utilities::Blackboard::unsubscribeAll(const std::string& pKey) {
     for (auto pair : mDataStorage)
         pair.second->unsubscribe(pKey);
 }
+
+//restore all wanings
+#ifdef _MSC_VER
+	#pragma warning( pop ) 
+#endif
+
+#endif

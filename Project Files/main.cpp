@@ -1,5 +1,4 @@
 #include "Blackboard.h"
-using Utilities::Blackboard;
 #include <iostream>
 
 void call(const int& value) {
@@ -8,8 +7,11 @@ void call(const int& value) {
 }
 
 int main() {
-	Blackboard b;
+	Util::Blackboard b;
 	b.subscribe<int>("key", &call);
+	b.subscribe<int>("key", [](const std::string& str, const int& val) {
+		__debugbreak();
+	});
 	b.write("key", 5, true);
 
 	auto value = b.read<int>("key");
