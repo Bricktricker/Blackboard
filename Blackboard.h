@@ -48,19 +48,8 @@ namespace Util {
     **/
     class Blackboard {
 		public:
-        /*----------Singleton Values----------*/
         Blackboard() = default;
-
-		~Blackboard() {
-			//Lock the data values
-			std::lock_guard<std::mutex> guard(mDataLock);
-
-			//Delete all Value Map values
-			for (auto& pair : mDataStorage) {
-				//delete pair.second;
-			}
-
-		};
+		~Blackboard() = default;
 
 		private:
         /*----------Variables----------*/
@@ -69,7 +58,9 @@ namespace Util {
 		std::unordered_map<size_t, std::unique_ptr<Templates::BaseMap>> mDataStorage;
 
         //! Store a mutex for locking data when in use
+#ifndef BB_NO_THREAD
 		std::mutex mDataLock;
+#endif
 
         //! Convert a template type into a unique ID value
         template<typename T> inline size_t templateToID() const;
@@ -139,7 +130,7 @@ namespace Util {
          *      
          *      Purpose:
          *      Store templated data type information for recollection
-         *      and use within the Blackboard singleton object
+         *      and use within the Blackboard object
         **/
         template<typename T>
         class ValueMap : BaseMap {
@@ -256,8 +247,10 @@ namespace Util {
     template<typename T>
     inline void Util::Blackboard::write(const std::string& pKey, const T& pValue, bool pRaiseCallbacks) {
 
-        //Lock the data
-        std::lock_guard<std::mutex> guard(mDataLock);
+#ifndef BB_NO_THREAD
+		//Lock the data
+		std::lock_guard<std::mutex> guard(mDataLock);
+#endif
 
         //Ensure the key for this type is supported
         size_t key = supportTypeWrite<T>();
@@ -291,8 +284,10 @@ namespace Util {
 	template<typename T>
 	inline void Util::Blackboard::write(const std::string& pKey, const T&& pValue, bool pRaiseCallbacks) {
 
+#ifndef BB_NO_THREAD
 		//Lock the data
 		std::lock_guard<std::mutex> guard(mDataLock);
+#endif
 
 		//Ensure the key for this type is supported
 		size_t key = supportTypeWrite<T>();
@@ -354,8 +349,10 @@ namespace Util {
 	template<typename T>
 	inline T& Util::Blackboard::read(const std::string& pKey) {
 
+#ifndef BB_NO_THREAD
 		//Lock the data
 		std::lock_guard<std::mutex> guard(mDataLock);
+#endif
 
 		//Ensure the key for this type is supported
 		size_t key = supportTypeRead<T>();
@@ -461,8 +458,10 @@ namespace Util {
     template<typename T>
     inline void Util::Blackboard::subscribe(const std::string& pKey, EventKeyValueCallback<T> pCb) {
 
+#ifndef BB_NO_THREAD
         //Lock the data
         std::lock_guard<std::mutex> guard(mDataLock);
+#endif
 
         //Ensure the key for this type is supported
         size_t key = supportTypeWrite<T>();
@@ -581,8 +580,10 @@ namespace Util {
 */
 void Util::Blackboard::wipeKey(const std::string& pKey) {
 
+#ifndef BB_NO_THREAD
     //Lock the data
     std::lock_guard<std::mutex> guard(mDataLock);
+#endif
 
     //Loop through the different type collections
     for (auto& pair : mDataStorage)
@@ -600,8 +601,10 @@ void Util::Blackboard::wipeKey(const std::string& pKey) {
 */
 void Util::Blackboard::wipeBoard(bool pWipeCallbacks) {
 
-    //Lock the data
-    std::lock_guard<std::mutex> guard(mDataLock);
+#ifndef BB_NO_THREAD
+	//Lock the data
+	std::lock_guard<std::mutex> guard(mDataLock);
+#endif
 
     //Loop through all stored Value maps
     for (auto& pair : mDataStorage) {
@@ -624,8 +627,10 @@ void Util::Blackboard::wipeBoard(bool pWipeCallbacks) {
 */
 void Util::Blackboard::unsubscribeAll(const std::string& pKey) {
 
-    //Lock the data
-    std::lock_guard<std::mutex> guard(mDataLock);
+#ifndef BB_NO_THREAD
+	//Lock the data
+	std::lock_guard<std::mutex> guard(mDataLock);
+#endif
 
     //Loop through all stored Value maps
     for (auto& pair : mDataStorage)

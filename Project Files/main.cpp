@@ -1,3 +1,4 @@
+//#define BB_NO_THREAD
 #include "Blackboard.h"
 #include <iostream>
 
@@ -13,6 +14,7 @@ int main() {
 	});
 
 	b.write("key", 5, true);
+	b.write("t", 6);
 	Test t;
 	t.m_val = 1;
 	b.write("class", t);

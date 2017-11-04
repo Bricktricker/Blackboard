@@ -1,5 +1,5 @@
 # Blackboard
-This thread save data structure allows you to store data of all types in one data structure.
+This thread safe data structure allows you to store data of all types in one data structure.
 It requires c++ 11. This repository is a fork of [MitchCroft/Blackboard](https://github.com/MitchCroft/Blackboard),
 but I removed the singleton feature and optimized it a bit, so that you can create multiple instances of the blackboard.
 
@@ -60,3 +60,7 @@ You can also define callbacks, whitch get called when a value gets added or chan
         return 0;
     }
 ```
+
+### Thread safety:
+All functions are thread safe for reading and writing data to the blackboard.
+If you don't need the thread safety, define `BB_NO_THREAD` before including the header file, to increase the performance.
